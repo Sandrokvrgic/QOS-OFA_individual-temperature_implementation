@@ -2,16 +2,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import jax
 import jax.numpy as jnp
-
-
 
 ### IDS
 SIX_HUMP_WIDE = 0
 SIX_HUMP_CLASSIC = 1
 
 #### FUNCTIONS
-
 def evaluate_objective(x: jnp.ndarray, objective_id: int) -> jnp.ndarray:
     """
     Evaluate a single point x for the given objective_id.
@@ -21,10 +19,12 @@ def evaluate_objective(x: jnp.ndarray, objective_id: int) -> jnp.ndarray:
 
     This function is JAX-friendly and can be used inside vmaps/jits.
     """
-    if objective_id in (SIX_HUMP_CLASSIC, SIX_HUMP_WIDE):
-        return six_hump(x)
-    else:
-        raise ValueError(f"Unknown objective_id: {objective_id}")
+    # Define one function per objective_id index.
+    # If in the future you add more objectives, add them here in the right order.
+    f = (lambda z: six_hump(z), lambda z: six_hump(z))  # objective_id == 0 (SIX_HUMP_WIDE), objective_id == 1 (SIX_HUMP_CLASSIC)
+
+    return jax.lax.switch(objective_id, f, x)
+
     
 def get_default_bounds(objective_id: int):
     """
@@ -45,14 +45,3 @@ def get_default_bounds(objective_id: int):
 # Six Hump Camelback  function
 def six_hump(x):
     return ((4 - 2.1*x[0]**2 + x[0]**4 / 3.) * x[0]**2 + x[0] * x[1]+ (-4 + 4*x[1]**2) * x[1] **2)
-
-# if __name__ == "__main__":
-#     x_test = jnp.array([1.0, 0.5], dtype=jnp.float32)
-
-#     f_wide    = evaluate_objective(x_test, SIX_HUMP_WIDE)
-#     f_classic = evaluate_objective(x_test, SIX_HUMP_CLASSIC)
-
-#     print("Sanity check for benchmarks.py")
-#     print("x_test      =", x_test)
-#     print("f_wide      =", float(f_wide))
-#     print("f_classic   =", float(f_classic)) 
