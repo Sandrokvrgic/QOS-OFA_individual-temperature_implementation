@@ -5,13 +5,15 @@ from mpl_toolkits.mplot3d import Axes3D
 import jax
 import jax.numpy as jnp
 
-### IDS
+# IDS
 SIX_HUMP_WIDE = 0
 SIX_HUMP_CLASSIC = 1
 SIX_HUMP_LOW_CONTRAST = 2
 SIX_HUMP_HIGH_CONTRAST = 3
+SIX_HUMP_ZERO_MIN = 4
 
-#### FUNCTIONS
+
+# FUNCTIONS
 def evaluate_objective(x: jnp.ndarray, objective_id: int) -> jnp.ndarray:
     """
     Evaluate a single point x for the given objective_id.
@@ -19,16 +21,14 @@ def evaluate_objective(x: jnp.ndarray, objective_id: int) -> jnp.ndarray:
     x: shape (D,)
     objective_id: one of the defined IDs, e.g. SIX_HUMP (0).
     """
-    # Define one function per objective_id index.
-    # If in the future you add more objectives, add them here in the right order.
     f = (
         lambda z: six_hump(z),
         lambda z: six_hump(z),
         lambda z : six_hump_low_contrast(z),
-        lambda z : six_hump_high_contrast(z)
-        )   # objective_id == 0 (SIX_HUMP_WIDE), objective_id == 1 (SIX_HUMP_CLASSIC)
-            # objective_id == 2 (SIX_HUMP_LOW_CONTRAST), objective_id == 3 (SIX_HUMP_HIGH_CONTRAST)
-
+        lambda z : six_hump_high_contrast(z),
+        lambda z: six_hump_zero_min(z), 
+        )
+    
     return jax.lax.switch(objective_id, f, x)
 
     
@@ -39,7 +39,7 @@ def get_default_bounds(objective_id: int):
 
     For now, only implemented for six-hump examples.
     """
-    if objective_id in (SIX_HUMP_CLASSIC,SIX_HUMP_LOW_CONTRAST,SIX_HUMP_HIGH_CONTRAST):
+    if objective_id in (SIX_HUMP_CLASSIC,SIX_HUMP_LOW_CONTRAST,SIX_HUMP_HIGH_CONTRAST,SIX_HUMP_ZERO_MIN):
         return jnp.array([[-2.0,  2.0], [-1.0,  1.0]], dtype=jnp.float32)
     elif objective_id == SIX_HUMP_WIDE:
         return jnp.array([[-5.0,  5.0], [-5.0,  5.0]], dtype=jnp.float32)
@@ -47,21 +47,39 @@ def get_default_bounds(objective_id: int):
         raise ValueError(f"No bounds for objective_id: {objective_id}")
     
 
-### BENCHMARKS
+# BENCHMARKS
 # Six Hump Camelback  function
 def six_hump(x):
     return ((4 - 2.1*x[0]**2 + x[0]**4 / 3.) * x[0]**2 + x[0] * x[1]+ (-4 + 4*x[1]**2) * x[1] **2)
+
 
 # Global minimum value for the six hump function, used for shifting and scaling.
 SIX_HUMP_FMIN = -1.031628453489877
 EPS_SHIFT = 1e-6
 
+
+def six_hump_zero_min(x):
+    """
+    Shifted Six-Hump Camelback function.
+
+    Same landscape shape as the original, but shifted upward so that:
+        global minimum = 0
+        all other values > 0
+
+    useful when an algorithm assumes non-negative objective values.
+    """
+    g = six_hump(x) - SIX_HUMP_FMIN
+    return jnp.maximum(g, 0.0)
+
+
 def six_hump_shifted_positive(x):
     return six_hump(x) - SIX_HUMP_FMIN + EPS_SHIFT
+
 
 def six_hump_low_contrast(x):
     g = six_hump_shifted_positive(x)
     return g**0.2
+
 
 def six_hump_high_contrast(x):
     g = six_hump_shifted_positive(x)

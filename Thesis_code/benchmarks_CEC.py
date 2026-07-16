@@ -1,59 +1,81 @@
 from pathlib import Path
 import numpy as np
-import jax
 import jax.numpy as jnp
 
 ### IDS for the reduced CEC suite.
-CEC_BENT_CIGAR   = 0
 CEC_ZAKHAROV     = 1
 CEC_RASTRIGIN    = 2
 CEC_SCAFFERS_F6  = 3
 CEC_LEVY         = 4
-CEC_HYBRID_1     = 5
-CEC_HYBRID_4     = 6
+CEC_HYBRID_1     = 5  
+CEC_HYBRID_6     = 8     
+CEC_HYBRID_10    = 10
+CEC_COMP_2       = 11  
+CEC_COMP_4       = 12    
+CEC_COMP_7       = 14  
+CEC_COMP_8       = 15 
 
 
 ### HELPER FUNCTIONS
-
 def get_cec_suite_ids():
     """
     Return the tuple of benchmark IDs used in the reduced CEC suite.
     """
     return (
-        CEC_BENT_CIGAR,
         CEC_ZAKHAROV,
         CEC_RASTRIGIN,
         CEC_SCAFFERS_F6,
         CEC_LEVY,
         CEC_HYBRID_1,
-        CEC_HYBRID_4,
+        CEC_HYBRID_6,
+        CEC_HYBRID_10,
+        CEC_COMP_2,
+        CEC_COMP_4,
+        CEC_COMP_7,
+        CEC_COMP_8,
     )
 
 
 def get_objective_name(objective_id: int) -> str:
-    names = (
-        "CEC Bent Cigar",
-        "CEC Zakharov",
-        "CEC Rastrigin",
-        "CEC Expanded Scaffer's F6",
-        "CEC Levy",
-        "CEC Hybrid Function 1",
-        "CEC Hybrid Function 4",
-    )
-    return names[objective_id]
+    names = {
+        CEC_ZAKHAROV: "CEC Zakharov",
+        CEC_RASTRIGIN: "CEC Rastrigin",
+        CEC_SCAFFERS_F6: "CEC Expanded Scaffer's F6",
+        CEC_LEVY: "CEC Levy",
+        CEC_HYBRID_1: "CEC Hybrid Function 1",
+        CEC_HYBRID_6: "CEC Hybrid Function 6",
+        CEC_HYBRID_10: "CEC Hybrid Function 10",
+        CEC_COMP_2: "CEC Composition Function 2",
+        CEC_COMP_4: "CEC Composition Function 4",
+        CEC_COMP_7: "CEC Composition Function 7",
+        CEC_COMP_8: "CEC Composition Function 8",
+    }
+
+    try:
+        return names[objective_id]
+    except KeyError as exc:
+        raise ValueError(f"Unknown CEC objective_id: {objective_id}") from exc
 
 
 def get_objective_family(objective_id: int) -> str:
-    families = (
-        "unimodal",
-        "unimodal",
-        "multimodal",
-        "multimodal",
-        "multimodal",
-        "hybrid",
-        "hybrid",
-    )
-    return families[objective_id]
+    families = {
+        CEC_ZAKHAROV: "unimodal",
+        CEC_RASTRIGIN: "multimodal",
+        CEC_SCAFFERS_F6: "multimodal",
+        CEC_LEVY: "multimodal",
+        CEC_HYBRID_1: "hybrid",
+        CEC_HYBRID_6: "hybrid",
+        CEC_HYBRID_10: "hybrid",
+        CEC_COMP_2: "composition",
+        CEC_COMP_4: "composition",
+        CEC_COMP_7: "composition",
+        CEC_COMP_8: "composition",
+    }
+
+    try:
+        return families[objective_id]
+    except KeyError as exc:
+        raise ValueError(f"Unknown CEC objective_id: {objective_id}") from exc
 
 
 def get_default_bounds(objective_id: int, dim: int):
@@ -65,28 +87,16 @@ def get_default_bounds(objective_id: int, dim: int):
     """
     lo = -100.0
     hi = 100.0
-    return jnp.tile(jnp.array([[lo, hi]], dtype=jnp.float32), (dim, 1))
+    return jnp.tile(jnp.array([[lo, hi]], dtype=jnp.float64), (dim, 1))
 
 
 ### CEC SETTINGS
 
 CEC_DIM = 30
-CEC_BOUNDS = (-100.0, 100.0)
 DATA_DIR = Path(__file__).resolve().parent / "Shift_data"
 
-# Internal benchmark ID = official CEC 2017 function number
-CEC_FILE_NUMBERS = {
-    CEC_BENT_CIGAR: 1,
-    CEC_ZAKHAROV: 2,
-    CEC_RASTRIGIN: 4,
-    CEC_SCAFFERS_F6: 5,
-    CEC_LEVY: 8,
-    CEC_HYBRID_1: 10,
-    CEC_HYBRID_4: 13,
-}
 
-
-def _load_txt_array(path: Path, dtype=jnp.float32) -> jnp.ndarray:
+def _load_txt_array(path: Path, dtype=jnp.float64) -> jnp.ndarray:
     """
     Load a numeric txt file and return it as a JAX array.
     """
@@ -94,7 +104,7 @@ def _load_txt_array(path: Path, dtype=jnp.float32) -> jnp.ndarray:
     return jnp.array(arr, dtype=dtype)
 
 
-def load_shift_vector(func_num: int, dim: int = CEC_DIM, dtype=jnp.float32) -> jnp.ndarray:
+def load_shift_vector(func_num: int, dim: int = CEC_DIM, dtype=jnp.float64) -> jnp.ndarray:
     """
     Load the shift vector from:
         shift_data_<func_num>.txt
@@ -107,7 +117,7 @@ def load_shift_vector(func_num: int, dim: int = CEC_DIM, dtype=jnp.float32) -> j
     return arr[:dim]
 
 
-def load_rotation_matrix(func_num: int, dim: int = CEC_DIM, dtype=jnp.float32) -> jnp.ndarray:
+def load_rotation_matrix(func_num: int, dim: int = CEC_DIM, dtype=jnp.float64) -> jnp.ndarray:
     """
     Load the rotation matrix from:
         M_<func_num>_D<dim>.txt
@@ -117,6 +127,82 @@ def load_rotation_matrix(func_num: int, dim: int = CEC_DIM, dtype=jnp.float32) -
     path = DATA_DIR / f"M_{func_num}_D{dim}.txt"
     arr = _load_txt_array(path, dtype=dtype)
     return arr.reshape(dim, dim)
+
+
+def load_shuffle_vector(func_num: int, dim: int = CEC_DIM) -> jnp.ndarray:
+    """
+    Load the shuffle vector from:
+        shuffle_data_<func_num>_D<dim>.txt
+
+    CEC shuffle files are stored as 1-based indices.
+    Python/JAX uses 0-based indexing, so we convert 1..D to 0..D-1.
+    """
+    path = DATA_DIR / f"shuffle_data_{func_num}_D{dim}.txt"
+
+    if not path.exists():
+        raise FileNotFoundError(f"{path} not found.")
+
+    shuffle = np.loadtxt(path, dtype=int).reshape(-1)
+
+    if shuffle.min() == 1 and shuffle.max() == dim:
+        shuffle = shuffle - 1
+
+    return jnp.asarray(shuffle[:dim], dtype=jnp.int32)
+
+
+def load_composition_shift_matrix(func_num: int, dim: int, n_components: int, dtype=jnp.float64) -> jnp.ndarray:
+    """
+    Load composition shift vectors.
+
+    Expected shape:
+        (n_components, dim)
+
+    File:
+        shift_data_<func_num>.txt
+    """
+    path = DATA_DIR / f"shift_data_{func_num}.txt"
+
+    if not path.exists():
+        raise FileNotFoundError(f"{path} not found.")
+
+    arr = np.loadtxt(path)
+    arr = np.asarray(arr, dtype=np.float64).reshape(-1)
+
+    needed = n_components * dim
+
+    if arr.size < needed:
+        raise ValueError(f"{path.name} has {arr.size} values, but {needed} are needed " f"for n_components={n_components}, dim={dim}.")
+
+    return jnp.asarray(arr[:needed].reshape(n_components, dim), dtype=dtype)
+
+
+def load_composition_rotation_matrices(func_num: int, dim: int, n_components: int, dtype=jnp.float64) -> jnp.ndarray:
+    """
+    Load composition rotation matrices.
+
+    Expected logical shape:
+        (n_components, dim, dim)
+
+    File:
+        M_<func_num>_D<dim>.txt
+    """
+    path = DATA_DIR / f"M_{func_num}_D{dim}.txt"
+
+    if not path.exists():
+        raise FileNotFoundError(f"{path} not found.")
+
+    arr = np.loadtxt(path)
+    arr = np.asarray(arr, dtype=np.float64).reshape(-1)
+
+    needed = n_components * dim * dim
+    if arr.size < needed:
+        raise ValueError(
+            f"{path.name} has {arr.size} values, but {needed} are needed "
+            f"for n_components={n_components}, dim={dim}."
+        )
+
+    return jnp.asarray(arr[:needed].reshape(n_components, dim, dim), dtype=dtype)
+
 
 def shift_input(x: jnp.ndarray, shift: jnp.ndarray) -> jnp.ndarray:
     return x - shift
@@ -133,9 +219,190 @@ def transform_shift_rotate(x: jnp.ndarray, shift: jnp.ndarray, rot: jnp.ndarray)
     """
     return rotate_input(shift_input(x, shift), rot)
 
-def cec_bent_cigar(x: jnp.ndarray, params: dict) -> jnp.ndarray:
+
+def _composition_weights(x: jnp.ndarray, shifts: jnp.ndarray, sigmas: jnp.ndarray, eps: float = 1e-300) -> jnp.ndarray:
+    """
+    Compute CEC-style composition weights.
+
+    x:      shape (D,)
+    shifts: shape (N, D)
+    sigmas: shape (N,)
+    """
+    D = x.shape[0]
+
+    diff = x[None, :] - shifts
+    d2 = jnp.sum(diff ** 2, axis=1)
+
+    # Standard CEC-style weight:
+    # w_i = 1/sqrt(sum((x-o_i)^2)) * exp(-sum((x-o_i)^2)/(2*D*sigma_i^2))
+    raw = (1.0 / jnp.sqrt(jnp.maximum(d2, eps))) * jnp.exp(-d2 / (2.0 * D * (sigmas ** 2)))
+
+    # If exactly on one component optimum, make that component dominate.
+    hit = d2 <= 1e-14
+    any_hit = jnp.any(hit)
+
+    hit_weights = hit.astype(x.dtype)
+    hit_weights = hit_weights / jnp.maximum(jnp.sum(hit_weights), eps)
+
+    raw_sum = jnp.sum(raw)
+    normal_weights = raw / jnp.maximum(raw_sum, eps)
+
+    return jnp.where(any_hit, hit_weights, normal_weights)
+
+
+def cec_composition_generic(x: jnp.ndarray, params: dict, components, sigmas, lambdas, inner_biases) -> jnp.ndarray:
+    """
+    Generic CEC composition function.
+
+    F(x) = sum_i w_i * (lambda_i * g_i(x) + inner_bias_i) + global_bias
+    """
+    shifts = params["shift"]      # (N, D)
+    rots = params["rot"]          # (N, D, D)
+
+    sigmas = jnp.asarray(sigmas, dtype=x.dtype)
+    lambdas = jnp.asarray(lambdas, dtype=x.dtype)
+    inner_biases = jnp.asarray(inner_biases, dtype=x.dtype)
+
+    weights = _composition_weights(x, shifts, sigmas)
+
+    vals = []
+
+    for i, component in enumerate(components):
+        z = rots[i] @ (x - shifts[i])
+        vals.append(_component_eval(component, z))
+
+    vals = jnp.stack(vals)
+
+    composed = jnp.sum(weights * (lambdas * vals + inner_biases))
+    return composed + params["bias"]
+
+
+def discus(x: jnp.ndarray) -> jnp.ndarray:
+    return 1e6 * x[0] ** 2 + jnp.sum(x[1:] ** 2)
+
+
+def schwefel_component(x: jnp.ndarray) -> jnp.ndarray:
+    """
+    Modified Schwefel component in CEC style.
+    Input x is assumed to already be the hybrid block.
+    """
+    z = 10.0 * x + 4.209687462275036e2
+    D = x.shape[0]
+
+    abs_z = jnp.abs(z)
+
+    case_mid = z * jnp.sin(jnp.sqrt(abs_z))
+
+    z_mod_pos = 500.0 - jnp.mod(z, 500.0)
+    case_pos = z_mod_pos * jnp.sin(jnp.sqrt(jnp.abs(z_mod_pos))) - ((z - 500.0) / 100.0) ** 2 / D
+
+    z_mod_neg = jnp.mod(jnp.abs(z), 500.0) - 500.0
+    case_neg = z_mod_neg * jnp.sin(jnp.sqrt(jnp.abs(z_mod_neg))) - ((z + 500.0) / 100.0) ** 2 / D
+
+    g = jnp.where(z > 500.0, case_pos, jnp.where(z < -500.0, case_neg, case_mid))
+
+    return 418.9828872724338 * D - jnp.sum(g)
+
+
+def rosenbrock_component(x: jnp.ndarray) -> jnp.ndarray:
+    return rosenbrock((2.048 / 100.0) * x + 1.0)
+
+
+def rastrigin_component(x: jnp.ndarray) -> jnp.ndarray:
+    return rastrigin((5.12 / 100.0) * x)
+
+
+def griewank_component(x: jnp.ndarray) -> jnp.ndarray:
+    z = (600.0 / 100.0) * x
+    i = jnp.arange(1, x.shape[0] + 1, dtype=x.dtype)
+    return 1.0 + jnp.sum(z ** 2) / 4000.0 - jnp.prod(jnp.cos(z / jnp.sqrt(i)))
+
+
+def katsuura_component(x: jnp.ndarray) -> jnp.ndarray:
+    z = (5.0 / 100.0) * x
+    D = z.shape[0]
+    i = jnp.arange(1, D + 1, dtype=z.dtype)
+    j = jnp.arange(1, 33, dtype=z.dtype)
+
+    two_j = 2.0 ** j
+    vals = jnp.abs(two_j[None, :] * z[:, None] - jnp.floor(two_j[None, :] * z[:, None] + 0.5)) / two_j[None, :]
+    temp = jnp.sum(vals, axis=1)
+
+    prod_term = jnp.prod((1.0 + i * temp) ** (10.0 / (D ** 1.2)))
+    return (10.0 / (D ** 2)) * prod_term - (10.0 / (D ** 2))
+
+
+def happycat_component(x: jnp.ndarray) -> jnp.ndarray:
+    z = (5.0 / 100.0) * x - 1.0
+    D = z.shape[0]
+    r2 = jnp.sum(z ** 2)
+    sum_z = jnp.sum(z)
+    return jnp.abs(r2 - D) ** 0.25 + (0.5 * r2 + sum_z) / D + 0.5
+
+
+def hgbat_component(x: jnp.ndarray) -> jnp.ndarray:
+    z = (5.0 / 100.0) * x - 1.0
+    D = z.shape[0]
+    r2 = jnp.sum(z ** 2)
+    sum_z = jnp.sum(z)
+    return jnp.abs(r2 ** 2 - sum_z ** 2) ** 0.5 + (0.5 * r2 + sum_z) / D + 0.5
+
+
+def _split_by_proportions_ceil(x: jnp.ndarray, proportions) -> tuple[jnp.ndarray, ...]:
+    """
+    CEC-style split: use ceil for all blocks except the last.
+    For D=30 and D=50 this usually matches the intended proportions exactly.
+    """
+    D = x.shape[0]
+    sizes = [int(np.ceil(float(p) * D)) for p in proportions[:-1]]
+    sizes.append(D - sum(sizes))
+
+    cuts = np.cumsum(sizes[:-1]).astype(int).tolist()
+    return tuple(jnp.split(x, cuts))
+
+
+def _component_eval(name: str, block: jnp.ndarray) -> jnp.ndarray:
+    if name == "bent_cigar":
+        return bent_cigar(block)
+    if name == "elliptic":
+        return high_conditioned_elliptic(block)
+    if name == "discus":
+        return discus(block)
+    if name == "zakharov":
+        return zakharov(block)
+    if name == "rosenbrock":
+        return rosenbrock_component(block)
+    if name == "rastrigin":
+        return rastrigin_component(block)
+    if name == "ackley":
+        return ackley(block)
+    if name == "schaffer_f7":
+        return schaffers_f7(block)
+    if name == "escaffer6":
+        return scaffers_f6(block)
+    if name == "schwefel":
+        return schwefel_component(block)
+    if name == "katsuura":
+        return katsuura_component(block)
+    if name == "happycat":
+        return happycat_component(block)
+    if name == "hgbat":
+        return hgbat_component(block)
+    if name == "griewank":
+        return griewank_component(block)
+
+    raise ValueError(f"Unknown hybrid component: {name}")
+
+
+def cec_hybrid_generic(x: jnp.ndarray, params: dict, proportions, components) -> jnp.ndarray:
     z = transform_shift_rotate(x, params["shift"], params["rot"])
-    return bent_cigar(z) + params["bias"]
+    z = z[params["shuffle"]]
+    blocks = _split_by_proportions_ceil(z, proportions)
+
+    val = jnp.asarray(0.0, dtype=x.dtype)
+    for block, component in zip(blocks, components):
+        val = val + _component_eval(component, block)
+    return val + params["bias"]
 
 
 def cec_zakharov(x: jnp.ndarray, params: dict) -> jnp.ndarray:
@@ -163,6 +430,7 @@ def cec_levy(x: jnp.ndarray, params: dict) -> jnp.ndarray:
     z = transform_shift_rotate(x, params["shift"], params["rot"])
     return levy(z + 1.0) + params["bias"]
 
+
 def cec_hybrid_1(x: jnp.ndarray, params: dict) -> jnp.ndarray:
     """
     CEC-style transformed Hybrid Function 1 wrapper.
@@ -178,96 +446,139 @@ def cec_hybrid_1(x: jnp.ndarray, params: dict) -> jnp.ndarray:
     - add CEC bias
     """
     z = transform_shift_rotate(x, params["shift"], params["rot"])
-
+    z = z[params["shuffle"]]
     z1, z2, z3 = _split_by_proportions(z, [0.2, 0.4, 0.4])
-
-    val = (
-        zakharov(z1)
-        + rosenbrock(z2 + 1.0)
-        + rastrigin(z3)
-    )
+    val = (zakharov(z1) + rosenbrock(z2 + 1.0) + rastrigin(z3))
 
     return val + params["bias"]
 
-def cec_hybrid_4(x: jnp.ndarray, params: dict) -> jnp.ndarray:
+def cec_hybrid_6(x: jnp.ndarray, params: dict) -> jnp.ndarray:
+    # CEC16: Hybrid Function 6, N=4
+    return cec_hybrid_generic(x, params, proportions=[0.2, 0.2, 0.3, 0.3], components=["escaffer6", "hgbat", "rosenbrock", "schwefel"])
+
+
+def cec_hybrid_10(x: jnp.ndarray, params: dict) -> jnp.ndarray:
+    # CEC20: Hybrid Function 10, N=6
+    return cec_hybrid_generic(x, params, proportions=[0.1, 0.1, 0.2, 0.2, 0.2, 0.2], components=["happycat", "katsuura", "ackley", "rastrigin", "schwefel", "schaffer_f7"])
+
+
+def cec_composition_2(x: jnp.ndarray, params: dict) -> jnp.ndarray:
+    # CEC22 / Composition Function 2, N=3
+    return cec_composition_generic(x, params, components=["rastrigin", "griewank", "schwefel"], sigmas=[10.0, 20.0, 30.0], lambdas=[1.0, 10.0, 1.0], inner_biases=[0.0, 100.0, 200.0])
+
+
+def cec_composition_4(x: jnp.ndarray, params: dict) -> jnp.ndarray:
+    # CEC24 / Composition Function 4, N=4
+    return cec_composition_generic(x, params, components=["ackley", "elliptic", "griewank", "rastrigin"], sigmas=[10.0, 20.0, 30.0, 40.0], lambdas=[10.0, 1e-6, 10.0, 1.0], inner_biases=[0.0, 100.0, 200.0, 300.0])
+
+
+def cec_composition_7(x: jnp.ndarray, params: dict) -> jnp.ndarray:
+    # CEC27 / Composition Function 7, N=6
+    return cec_composition_generic(x, params, components=["hgbat", "rastrigin", "schwefel", "bent_cigar", "elliptic", "escaffer6"], sigmas=[10.0, 20.0, 30.0, 40.0, 50.0, 60.0], lambdas=[10.0, 10.0, 2.5, 1e-26, 1e-6, 5e-4], inner_biases=[0.0, 100.0, 200.0, 300.0, 400.0, 500.0])
+
+
+def cec_composition_8(x: jnp.ndarray, params: dict) -> jnp.ndarray:
+    # CEC28 / Composition Function 8, N=6
+    return cec_composition_generic(x, params, components=["ackley", "griewank", "discus", "rosenbrock", "happycat", "escaffer6"], sigmas=[10.0, 20.0, 30.0, 40.0, 50.0, 60.0], lambdas=[10.0, 10.0, 1e-6, 1.0, 1.0, 5e-4], inner_biases=[0.0, 100.0, 200.0, 300.0, 400.0, 500.0])
+
+
+def get_cec_params(dim: int = CEC_DIM, dtype=jnp.float64):
     """
-    CEC-style transformed Hybrid Function 4 wrapper.
+    Load transformation data for the active 11-function thesis CEC suite.
 
-    IMPORTANT:
-    The provided M_13_D30.txt already comes from the hybrid generator pipeline
-    with the subcomponent permutation embedded in the saved matrix.
-    Therefore we do NOT apply shuffle_data again here.
-    """
-    z = transform_shift_rotate(x, params["shift"], params["rot"])
-
-    z1, z2, z3, z4 = _split_by_proportions(z, [0.2, 0.2, 0.2, 0.4])
-
-    val = (
-        high_conditioned_elliptic(z1)
-        + ackley(z2)
-        + schaffers_f7(z3)
-        + rastrigin(z4)
-    )
-
-    return val + params["bias"]
-
-
-def get_cec_params(dim: int = CEC_DIM, dtype=jnp.float32):
-    """
-    Load the shift / rotation / shuffle data for the active 7-function CEC suite.
-
-    Bias values follow the CEC 2017 benchmark table:
-    - F1  -> 100
-    - F2  -> 200
-    - F4  -> 400
-    - F5  -> 500
-    - F8  -> 800
-    - F10 -> 1000
-    - F13 -> 1300
+    F3  - Zakharov
+    F5  - Rastrigin
+    F6  - Expanded Scaffer's F6
+    F9  - Levy
+    F11 - Hybrid Function 1
+    F16 - Hybrid Function 6
+    F20 - Hybrid Function 10
+    F22 - Composition Function 2
+    F24 - Composition Function 4
+    F27 - Composition Function 7
+    F28 - Composition Function 8
     """
     return {
-        CEC_BENT_CIGAR: {
-            "func_num": 1,
-            "shift": load_shift_vector(1, dim, dtype),
-            "rot": load_rotation_matrix(1, dim, dtype),
-            "bias": jnp.array(100.0, dtype=dtype),
-        },
-        CEC_ZAKHAROV: {
-            "func_num": 2,
-            "shift": load_shift_vector(2, dim, dtype),
-            "rot": load_rotation_matrix(2, dim, dtype),
-            "bias": jnp.array(200.0, dtype=dtype),
-        },
-        CEC_RASTRIGIN: {
-            "func_num": 4,
-            "shift": load_shift_vector(4, dim, dtype),
-            "rot": load_rotation_matrix(4, dim, dtype),
-            "bias": jnp.array(400.0, dtype=dtype),
-        },
-        CEC_SCAFFERS_F6: {
-            "func_num": 5,
-            "shift": load_shift_vector(5, dim, dtype),
-            "rot": load_rotation_matrix(5, dim, dtype),
-            "bias": jnp.array(500.0, dtype=dtype),
-        },
-        CEC_LEVY: {
-            "func_num": 8,
-            "shift": load_shift_vector(8, dim, dtype),
-            "rot": load_rotation_matrix(8, dim, dtype),
-            "bias": jnp.array(800.0, dtype=dtype),
-        },
-        CEC_HYBRID_1: {
-            "func_num": 10,
-            "shift": load_shift_vector(10, dim, dtype),
-            "rot": load_rotation_matrix(10, dim, dtype),
-            "bias": jnp.array(1000.0, dtype=dtype),
-        },
-        CEC_HYBRID_4: {
-            "func_num": 13,
-            "shift": load_shift_vector(13, dim, dtype),
-            "rot": load_rotation_matrix(13, dim, dtype),
-            "bias": jnp.array(1300.0, dtype=dtype),
-        }
+
+    CEC_ZAKHAROV: {
+        "func_num": 3,
+        "shift": load_shift_vector(3, dim, dtype),
+        "rot": load_rotation_matrix(3, dim, dtype),
+        "bias": jnp.array(300.0, dtype=dtype),
+    },
+
+    CEC_RASTRIGIN: {
+        "func_num": 5,
+        "shift": load_shift_vector(5, dim, dtype),
+        "rot": load_rotation_matrix(5, dim, dtype),
+        "bias": jnp.array(500.0, dtype=dtype),
+    },
+
+    CEC_SCAFFERS_F6: {
+        "func_num": 6,
+        "shift": load_shift_vector(6, dim, dtype),
+        "rot": load_rotation_matrix(6, dim, dtype),
+        "bias": jnp.array(600.0, dtype=dtype),
+    },
+
+    CEC_LEVY: {
+        "func_num": 9,
+        "shift": load_shift_vector(9, dim, dtype),
+        "rot": load_rotation_matrix(9, dim, dtype),
+        "bias": jnp.array(900.0, dtype=dtype),
+    },
+
+    CEC_HYBRID_1: {
+        "func_num": 11,
+        "shift": load_shift_vector(11, dim, dtype),
+        "rot": load_rotation_matrix(11, dim, dtype),
+        "shuffle": load_shuffle_vector(11, dim),
+        "bias": jnp.array(1100.0, dtype=dtype),
+    },
+
+    CEC_HYBRID_6: {
+        "func_num": 16,
+        "shift": load_shift_vector(16, dim, dtype),
+        "rot": load_rotation_matrix(16, dim, dtype),
+        "shuffle": load_shuffle_vector(16, dim),
+        "bias": jnp.array(1600.0, dtype=dtype),
+    },
+
+
+    CEC_HYBRID_10: {
+        "func_num": 20,
+        "shift": load_shift_vector(20, dim, dtype),
+        "rot": load_rotation_matrix(20, dim, dtype),
+        "shuffle": load_shuffle_vector(20, dim),
+        "bias": jnp.array(2000.0, dtype=dtype),
+    },
+        CEC_COMP_2: {
+        "func_num": 22,
+        "shift": load_composition_shift_matrix(22, dim, n_components=3, dtype=dtype),
+        "rot": load_composition_rotation_matrices(22, dim, n_components=3, dtype=dtype),
+        "bias": jnp.array(2200.0, dtype=dtype),
+    },
+
+    CEC_COMP_4: {
+        "func_num": 24,
+        "shift": load_composition_shift_matrix(24, dim, n_components=4, dtype=dtype),
+        "rot": load_composition_rotation_matrices(24, dim, n_components=4, dtype=dtype),
+        "bias": jnp.array(2400.0, dtype=dtype),
+    },
+
+    CEC_COMP_7: {
+        "func_num": 27,
+        "shift": load_composition_shift_matrix(27, dim, n_components=6, dtype=dtype),
+        "rot": load_composition_rotation_matrices(27, dim, n_components=6, dtype=dtype),
+        "bias": jnp.array(2700.0, dtype=dtype),
+    },
+
+    CEC_COMP_8: {
+        "func_num": 28,
+        "shift": load_composition_shift_matrix(28, dim, n_components=6, dtype=dtype),
+        "rot": load_composition_rotation_matrices(28, dim, n_components=6, dtype=dtype),
+        "bias": jnp.array(2800.0, dtype=dtype),
+    },
     }
 
 
@@ -280,9 +591,7 @@ def evaluate_objective(x: jnp.ndarray, objective_id: int) -> jnp.ndarray:
     """
     params = get_cec_params(dim=x.shape[0], dtype=x.dtype)
 
-    if objective_id == CEC_BENT_CIGAR:
-        return cec_bent_cigar(x, params[CEC_BENT_CIGAR])
-    elif objective_id == CEC_ZAKHAROV:
+    if objective_id == CEC_ZAKHAROV:
         return cec_zakharov(x, params[CEC_ZAKHAROV])
     elif objective_id == CEC_RASTRIGIN:
         return cec_rastrigin(x, params[CEC_RASTRIGIN])
@@ -292,8 +601,18 @@ def evaluate_objective(x: jnp.ndarray, objective_id: int) -> jnp.ndarray:
         return cec_levy(x, params[CEC_LEVY])
     elif objective_id == CEC_HYBRID_1:
         return cec_hybrid_1(x, params[CEC_HYBRID_1])
-    elif objective_id == CEC_HYBRID_4:
-        return cec_hybrid_4(x, params[CEC_HYBRID_4])
+    elif objective_id == CEC_HYBRID_6:
+        return cec_hybrid_6(x, params[CEC_HYBRID_6])
+    elif objective_id == CEC_HYBRID_10:
+        return cec_hybrid_10(x, params[CEC_HYBRID_10])
+    elif objective_id == CEC_COMP_2:
+        return cec_composition_2(x, params[CEC_COMP_2])
+    elif objective_id == CEC_COMP_4:
+        return cec_composition_4(x, params[CEC_COMP_4])
+    elif objective_id == CEC_COMP_7:
+        return cec_composition_7(x, params[CEC_COMP_7])
+    elif objective_id == CEC_COMP_8:
+        return cec_composition_8(x, params[CEC_COMP_8])
     else:
         raise ValueError(f"Unknown objective_id: {objective_id}")
 
@@ -301,27 +620,8 @@ def evaluate_objective(x: jnp.ndarray, objective_id: int) -> jnp.ndarray:
 ### CEC BENCHMARK FUNCTIONS
 
 # UNIMODAL
+
 def bent_cigar(x: jnp.ndarray) -> jnp.ndarray:
-    """
-    CEC Bent Cigar benchmark function.
-
-    Source:
-    - CEC 2017: "Shifted and Rotated Bent Cigar Function", Function 1 (F1)
-    - Also in CEC 2014 as "Rotated Bent Cigar Function", Function 2 (F2)
-
-    Base formula:
-        f(x) = x_1^2 + 10^6 * sum_{i=2..D} x_i^2
-
-    Type:
-    - Unimodal: there is one global optimum only.
-    - Non-separable in the official CEC benchmark version after shift/rotation.
-    - Ill-conditioned / anisotropic: one direction behaves very differently from the others.
-    - Smooth but with a very narrow valley/ridge structure.
-
-    Optimum of the base function:
-    - Global minimum at x = 0
-    - f(0) = 0
-    """
     return x[0] ** 2 + 1e6 * jnp.sum(x[1:] ** 2)
 
 
@@ -437,7 +737,6 @@ def levy(x: jnp.ndarray) -> jnp.ndarray:
     return term1 + term2 + term3
 
 
-
 # HYBRID AND COMPOSITION FUNCTIONS
 # Hybrid 1
 def rosenbrock(x: jnp.ndarray) -> jnp.ndarray:
@@ -479,40 +778,6 @@ def _split_by_proportions(x: jnp.ndarray, proportions) -> tuple[jnp.ndarray, ...
     return tuple(jnp.split(x, cuts))
 
 
-def hybrid_1(x: jnp.ndarray) -> jnp.ndarray:
-    """
-    CEC Hybrid Function 1 benchmark function.
-
-    Source:
-    - CEC 2017: "Hybrid Function 1", Function 10 (F10)
-
-    Base formula:
-        F(x) = g1(z1) + g2(z2) + g3(z3)
-
-        where:
-        - N = 3
-        - p = [0.2, 0.4, 0.4]
-        - g1 = Zakharov Function
-        - g2 = Rosenbrock Function
-        - g3 = Rastrigin’s Function
-
-    Type:
-    - Hybrid function: different variable subcomponents use different base functions.
-    - Non-separable in the official CEC benchmark version.
-    - Mixed landscape structure: combines smooth polynomial behavior, curved-valley
-      behavior, and highly multimodal periodic behavior.
-
-    Optimum of the base function:
-    - For this base implementation, the global minimum is obtained when:
-        z1 = 0   for the Zakharov part,
-        z2 = 1   for the Rosenbrock part,
-        z3 = 0   for the Rastrigin part.
-    - The minimum value is f(x) = 0.
-    """
-    z1, z2, z3 = _split_by_proportions(x, [0.2, 0.4, 0.4])
-    return zakharov(z1) + rosenbrock(z2) + rastrigin(z3)
-
-# Hybrid 4
 def ackley(x: jnp.ndarray) -> jnp.ndarray:
     """
     Ackley benchmark function.
@@ -591,37 +856,3 @@ def high_conditioned_elliptic(x: jnp.ndarray) -> jnp.ndarray:
     weights = 10.0 ** (6.0 * i / (D - 1))
     return jnp.sum(weights * x**2)
 
-
-def hybrid_4(x: jnp.ndarray) -> jnp.ndarray:
-    """
-    CEC Hybrid Function 4 benchmark function.
-
-    Source:
-    - CEC 2017: "Hybrid Function 4", Function 13 (F13)
-
-    Base formula:
-        F(x) = g1(z1) + g2(z2) + g3(z3) + g4(z4)
-
-        where:
-        - N = 4
-        - p = [0.2, 0.2, 0.2, 0.4]
-        - g1 = High Conditioned Elliptic Function
-        - g2 = Ackley’s Function
-        - g3 = Schaffer’s F7 Function
-        - g4 = Rastrigin’s Function
-
-    Type:
-    - Hybrid function: different variable subcomponents use different base functions.
-    - Non-separable in the official CEC benchmark version.
-    - Mixed landscape structure: combines smooth polynomial behavior, oscillatory behavior with a central basin, rugged and oscillatory
-
-    Optimum of the base function:
-    - For this base implementation, the global minimum is obtained when:
-        z1 = 0   for the elliptic part,
-        z2 = 0   for the Ackley part,
-        z3 = 0   for the Schaffer’s F7 part,
-        z4 = 0   for the Rastrigin part.
-    - The minimum value is f(x) = 0.
-    """
-    z1, z2, z3, z4 = _split_by_proportions(x, [0.2, 0.2, 0.2, 0.4])
-    return (high_conditioned_elliptic(z1) + ackley(z2) + schaffers_f7(z3) + rastrigin(z4))

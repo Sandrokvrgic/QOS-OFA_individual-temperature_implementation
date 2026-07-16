@@ -9,6 +9,7 @@ def get_backend(benchmark_family: str):
         return bcec
     else:
         raise ValueError(f"Unknown benchmark_family: {benchmark_family}")
+    
 
 def get_bounds(benchmark_family: str, objective_id: int, dim: int | None = None):
     backend = get_backend(benchmark_family)
@@ -18,6 +19,7 @@ def get_bounds(benchmark_family: str, objective_id: int, dim: int | None = None)
         if dim is None:
             raise ValueError("CEC benchmarks require dim.")
         return backend.get_default_bounds(objective_id, dim)
+    
     
 def get_objective_name(benchmark_family: str, objective_id: int):
     backend = get_backend(benchmark_family)
@@ -31,18 +33,13 @@ def get_objective_name(benchmark_family: str, objective_id: int):
             b2d.SIX_HUMP_CLASSIC: "Six-Hump Classic",
             b2d.SIX_HUMP_LOW_CONTRAST: "Six-Hump Low Contrast",
             b2d.SIX_HUMP_HIGH_CONTRAST: "Six-Hump High Contrast",
+            b2d.SIX_HUMP_ZERO_MIN: "Six-Hump Zero Min",
         }
         return names[objective_id]
-
     return f"objective_{objective_id}"
 
 
-def make_objective_fn(
-    benchmark_family: str,
-    objective_id: int,
-    dim: int | None = None,
-    dtype=jnp.float32,
-):
+def make_objective_fn(benchmark_family: str, objective_id: int, dim: int | None = None, dtype=jnp.float64):
     """
     Return a function objective_fn(x) that evaluates one point x.
 
@@ -59,20 +56,39 @@ def make_objective_fn(
         params = bcec.get_cec_params(dim=dim, dtype=dtype)
         p = params[objective_id]
 
-        if objective_id == bcec.CEC_BENT_CIGAR:
-            return lambda x: bcec.cec_bent_cigar(x, p)
-        elif objective_id == bcec.CEC_ZAKHAROV:
+        if objective_id == bcec.CEC_ZAKHAROV:
             return lambda x: bcec.cec_zakharov(x, p)
+
         elif objective_id == bcec.CEC_RASTRIGIN:
             return lambda x: bcec.cec_rastrigin(x, p)
+
         elif objective_id == bcec.CEC_SCAFFERS_F6:
             return lambda x: bcec.cec_scaffers_f6(x, p)
+
         elif objective_id == bcec.CEC_LEVY:
             return lambda x: bcec.cec_levy(x, p)
+
         elif objective_id == bcec.CEC_HYBRID_1:
             return lambda x: bcec.cec_hybrid_1(x, p)
-        elif objective_id == bcec.CEC_HYBRID_4:
-            return lambda x: bcec.cec_hybrid_4(x, p)
+
+        elif objective_id == bcec.CEC_HYBRID_6:
+            return lambda x: bcec.cec_hybrid_6(x, p)
+
+        elif objective_id == bcec.CEC_HYBRID_10:
+            return lambda x: bcec.cec_hybrid_10(x, p)
+        
+        elif objective_id == bcec.CEC_COMP_2:
+            return lambda x: bcec.cec_composition_2(x, p)
+
+        elif objective_id == bcec.CEC_COMP_4:
+            return lambda x: bcec.cec_composition_4(x, p)
+
+        elif objective_id == bcec.CEC_COMP_7:
+            return lambda x: bcec.cec_composition_7(x, p)
+
+        elif objective_id == bcec.CEC_COMP_8:
+            return lambda x: bcec.cec_composition_8(x, p)
+        
         else:
             raise ValueError(f"Unknown CEC objective_id: {objective_id}")
 
