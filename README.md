@@ -1,4 +1,4 @@
-# Thesis Code Repository
+# Code repository
 This repository is comprised of 10 jupyter notebooks, tables, figures, shift data and resuults data, all used for my thesis on state-dependent modifications
 of the Quasi-Oppositional Social Optimal Foraging Algorithm (QOS-OFA).
 
