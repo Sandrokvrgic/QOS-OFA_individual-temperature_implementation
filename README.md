@@ -1,5 +1,5 @@
 # Code repository
-This repository is comprised of 10 jupyter notebooks, tables, figures, shift data and resuults data, all used for my thesis on state-dependent modifications
+This repository is comprised of 10 jupyter notebooks, tables, figures, shift data and results data, all used for my thesis on state-dependent modifications
 of the Quasi-Oppositional Social Optimal Foraging Algorithm (QOS-OFA).
 
 The thesis utilizes 3 algorithms, the original QOS-OFA and two proposed ones, IT-QOS-OFA and IT-SIA-QOS-OFA. More information about the algorithms is provided in the thesis. 
